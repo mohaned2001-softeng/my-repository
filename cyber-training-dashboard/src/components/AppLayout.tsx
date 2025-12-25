@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AuthProvider } from '../context/AuthContext';
 import Navbar from './Navbar';
 import Hero from './Hero';
@@ -13,10 +13,38 @@ import AuthForm from './AuthForm';
 import Dashboard from './Dashboard';
 import AboutPage from './AboutPage';
 import Footer from './Footer';
+import { useLab } from '@/contexts/LabContext';
+import { useLabs } from '@/contexts/LabsContext';
 
 const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
+  const { fetchLabs } = useLab();
+  const { labs, setLabs } = useLabs();
+  const labsRequestRef = useRef(false);
+
+  useEffect(() => {
+    if (labs.length || labsRequestRef.current) {
+      return;
+    }
+    labsRequestRef.current = true;
+    let isActive = true;
+    const loadLabs = async () => {
+      try {
+        const data = await fetchLabs();
+        if (isActive) {
+          setLabs(data);
+        }
+      } catch (error) {
+        console.error('Failed to load labs', error);
+        labsRequestRef.current = false;
+      }
+    };
+    loadLabs();
+    return () => {
+      isActive = false;
+    };
+  }, [labs.length, fetchLabs, setLabs]);
 
   const handleLabClick = (labId: string) => {
     setSelectedLab(labId);

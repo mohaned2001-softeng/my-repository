@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { RegisterState } from '@/types';
+import { RegisterState, User } from '@/types';
 import ForgotPasswordPage from './ForgotPasswordPage';
 
 interface AuthFormProps {
@@ -25,12 +25,19 @@ const getErrorMessage = (error: unknown) => {
 };
 
 const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
-  const initialUser:RegisterState = {
+  const initialUser:User = {
     email: '',
     password: '',
-    fullName: '',
+    full_name: '',
+    avatar_url: null,
+    bio: null,
+    role:'',
+    created_at: new Date(),
+    id: '',
+    is_verified: false,
+   
   }
-  const [user, setUser] = useState<RegisterState | null>(initialUser);
+  const [user, setUser] = useState<User | null>(initialUser);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setUserPassword] = useState('');
@@ -68,7 +75,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
             return;
           }
           // Send new password
-          const response = await setPassword(resetEmail, resetPassword);
+          const response = await setPassword(resetEmail, resetPassword ,resetConfirmPassword);
           if (response.status === 200) {
             setIsForgotPassword(false);
             setResetStep(null);
@@ -278,7 +285,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                 {!isLogin && (
                   <div>
                     <label className="block text-gray-400 text-sm mb-2">Full Name</label>
-                    <input type="text" value={user.fullName} onChange={e => setUser({ ...user, fullName: e.target.value })} required
+                    <input type="text" value={user.full_name} onChange={e => setUser({ ...user, full_name: e.target.value })} required
                       className="w-full px-4 py-3 bg-[#0A0E27] border border-gray-700 rounded-lg text-white focus:border-red-500 focus:outline-none" placeholder="Enter your name" />
                   </div>
                 )}
@@ -296,6 +303,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                   className="w-full py-4 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors">
                   {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
                 </button>
+                <br/>
+                <button className={"w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors"}>continue with Google</button>
               </>
             )}
           </form>

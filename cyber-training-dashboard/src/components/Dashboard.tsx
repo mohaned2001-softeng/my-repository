@@ -1,31 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
-import { labs } from '../data/labs';
-
+import { User } from '@/types';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {isTokenValidAPIClient} from '@/core/apiClient';
+import LabManagementForm from './LabManagementForm';
+import { useLabs } from '@/contexts/LabsContext';
 interface DashboardProps {
   onLabClick: (labId: string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
-  const { user } = useAuth();
+  const { user  , editProfile , token , refreshToken} = useAuth();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(user?.full_name || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-
+  const [userState , setUserState] = useState(user);
+  const { labs } = useLabs();
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || '');
       setBio(user.bio || '');
     }
-  }, [user]);
-
+  }, [user, token]);
+  useEffect( () => {
+        if(token?.access_token){
+         const valid = isTokenValidAPIClient(token.access_token);
+         if(!valid){
+          refreshToken();
+         }
+        }
+  }, [token, refreshToken]);
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    await supabase.from('users').update({ full_name: fullName, bio }).eq('id', user.id);
+    await editProfile(userState.full_name, userState.bio);
     setSaving(false);
     setEditing(false);
   };
@@ -34,7 +44,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
 
   const recentLabs = labs.slice(0, 6);
   const beginnerLabs = labs.filter(l => l.difficulty === 'Beginner').slice(0, 3);
+  const firstLabId = labs[0]?.id;
+ 
 
+ 
+  function DialogDemo() { 
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <button className="px-4 py-2 bg-red-500 text-white rounded-md">Open Dialog</button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dialog Title</DialogTitle>
+            <DialogDescription>
+              This is a description inside the dialog.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button className="px-4 py-2 bg-gray-300 rounded-md">Close</button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
   return (
     <div className="min-h-screen bg-[#0A0E27] pt-20 px-4">
       <div className="max-w-6xl mx-auto py-8">
@@ -57,8 +92,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
                 <h3 className="text-xl font-bold text-white mb-4">Continue Learning</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {beginnerLabs.map(lab => (
-                    <div key={lab.id} onClick={() => onLabClick(lab.id)} className="flex gap-4 p-3 bg-[#0A0E27] rounded-lg cursor-pointer hover:bg-gray-800 transition-colors">
-                      <img src={lab.image} alt={lab.title} className="w-16 h-16 rounded-lg object-cover" />
+                    <div key={lab.id ?? lab.title} onClick={() => lab.id && onLabClick(lab.id)} className="flex gap-4 p-3 bg-[#0A0E27] rounded-lg cursor-pointer hover:bg-gray-800 transition-colors">
+                      <img src={lab.image_url} alt={lab.title} className="w-16 h-16 rounded-lg object-cover" />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-white font-medium truncate">{lab.title}</h4>
                         <p className="text-green-400 text-sm">{lab.difficulty}</p>
@@ -71,8 +106,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
                 <h3 className="text-xl font-bold text-white mb-4">All Labs</h3>
                 <div className="grid sm:grid-cols-3 gap-3">
                   {recentLabs.map(lab => (
-                    <div key={lab.id} onClick={() => onLabClick(lab.id)} className="p-3 bg-[#0A0E27] rounded-lg cursor-pointer hover:bg-gray-800 transition-colors text-center">
-                      <img src={lab.image} alt={lab.title} className="w-full h-20 rounded-lg object-cover mb-2" />
+                    <div key={lab.id ?? lab.title} onClick={() => lab.id && onLabClick(lab.id)} className="p-3 bg-[#0A0E27] rounded-lg cursor-pointer hover:bg-gray-800 transition-colors text-center">
+                      <img src={lab.image_url} alt={lab.title} className="w-full h-20 rounded-lg object-cover mb-2" />
                       <h4 className="text-white text-sm font-medium truncate">{lab.title}</h4>
                     </div>
                   ))}
@@ -84,8 +119,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
                 <div className="w-20 h-20 mx-auto bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-3xl font-bold text-white mb-4">
                   {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
                 </div>
-                <h2 className="text-xl font-bold text-white">{user.full_name || 'Cyber Student'}</h2>
-                <p className="text-gray-400 text-sm">{user.email}</p>
+                <h2 className="text-xl font-bold text-white">{userState.full_name || 'Cyber Student'}</h2>
+                <p className="text-gray-400 text-sm">{userState.email}</p>
               </div>
               <div className="bg-[#111827] rounded-2xl p-6 border border-gray-800">
                 <h3 className="text-lg font-bold text-white mb-4">Quick Stats</h3>
@@ -98,8 +133,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
             </div>
           </div>
         )}
-        {activeTab === 'profile' && (
-          <div className="max-w-2xl">
+        {activeTab === 'profile' && ( 
+           
+          <div className="max-w-3xl">
             <div className="bg-[#111827] rounded-2xl p-6 border border-gray-800">
               <div className="flex items-center gap-6 mb-6">
                 <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-4xl font-bold text-white">
@@ -113,12 +149,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">Full Name</label>
-                  <input value={fullName} onChange={e => setFullName(e.target.value)} disabled={!editing}
+                  <input value={userState.full_name} onChange={e => setUserState({...userState  , full_name : e.target.value})} disabled={!editing}
                     className="w-full px-4 py-3 bg-[#0A0E27] border border-gray-700 rounded-lg text-white disabled:opacity-50" />
                 </div>
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">Bio</label>
-                  <textarea value={bio} onChange={e => setBio(e.target.value)} disabled={!editing} rows={4}
+                  <textarea value={userState.bio} onChange={e => setUserState({...userState , bio : e.target.value})} disabled={!editing} rows={4}
                     className="w-full px-4 py-3 bg-[#0A0E27] border border-gray-700 rounded-lg text-white disabled:opacity-50" placeholder="Tell us about yourself..." />
                 </div>
                 {editing ? (
@@ -127,10 +163,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
                     <button onClick={() => setEditing(false)} className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Cancel</button>
                   </div>
                 ) : (
-                  <button onClick={() => setEditing(true)} className="px-6 py-3 border border-gray-600 text-gray-300 hover:border-red-500 rounded-lg">Edit Profile</button>
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditing(true)} className="px-6 py-3 border border-gray-600 text-gray-300 hover:border-red-500 rounded-lg">Edit Profile</button>
+                  </div>
                 )}
               </div>
-            </div>
+            </div> 
+            {user.role === 'TEACHER' && (
+              <LabManagementForm/>
+            )}
           </div>
         )}
         {activeTab === 'progress' && (
@@ -140,7 +181,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
             </svg>
             <h3 className="text-xl font-bold text-white mb-2">Start Your Journey</h3>
             <p className="text-gray-400 mb-6">Complete labs to track your progress here!</p>
-            <button onClick={() => onLabClick(labs[0].id)} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg">Start First Lab</button>
+            <button
+              onClick={() => firstLabId && onLabClick(firstLabId)}
+              disabled={!firstLabId}
+              className={`px-6 py-3 rounded-lg ${firstLabId ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+            >
+              Start First Lab
+            </button>
           </div>
         )}
       </div>
@@ -149,3 +196,4 @@ const Dashboard: React.FC<DashboardProps> = ({ onLabClick }) => {
 };
 
 export default Dashboard;
+

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { LabsProvider } from "./contexts/LabsContext";
 
 const queryClient = new QueryClient();
 
@@ -16,12 +17,14 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <LabsProvider>
         <BrowserRouter>
-          <Routes>
+           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </LabsProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>

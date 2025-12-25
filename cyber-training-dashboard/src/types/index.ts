@@ -1,17 +1,22 @@
-import { DateToSystemTimezoneSetter } from "node_modules/date-fns/parse/_lib/Setter";
-
 export interface Lab {
-  id: string;
+  id?: string;
   title: string;
   description: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' | string;
   category: string;
-  image: string;
-  writeupUrl: string;
-  skills: string[];
-  estimatedTime: string;
+  image?: string | File | null;
+  image_url?: string | null;
+  writeup_url: string;
+  skills?: string[];
+  estimated_time: number;
+  created_at?: string;
+  updated_at?: string;
+  author?: string | null;
 }
 
+export interface AddLabState extends Omit<Lab, 'id'>  {
+  created_at?: Date;
+}
 export interface User {
   id: string;
   email: string;
@@ -19,9 +24,15 @@ export interface User {
   avatar_url: string | null;
   bio: string | null;
   created_at: Date;
+  password:string;
   is_verified: boolean;
+  role: string;
 }
 
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+}
 export interface RegisterState {
   email: string;
   password: string;
