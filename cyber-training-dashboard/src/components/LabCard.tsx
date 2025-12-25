@@ -1,5 +1,6 @@
 import React from 'react';
-import { Lab } from '../types';
+import { Lab } from '@/types';
+import { buildAssetUrl } from '@/lib/config';
 
 interface LabCardProps {
   lab: Lab;
@@ -14,14 +15,37 @@ const difficultyColors: Record<string, string> = {
 };
 
 const LabCard: React.FC<LabCardProps> = ({ lab, onClick }) => {
+  const resolveImageSrc = () => {
+    if (lab.image_url) {
+      return buildAssetUrl(lab.image_url);
+    }
+    if (typeof lab.image === 'string') {
+      return buildAssetUrl(lab.image) ?? lab.image;
+    }
+    if (lab.image instanceof File) {
+      return URL.createObjectURL(lab.image);
+    }
+    return 'https://placehold.co/600x400?text=Cyber+Lab';
+  };
+  const imageSrc = resolveImageSrc();
+  const formatDuration = () => {
+    if (!lab.estimated_time) {
+      return 'N/A';
+    }
+    if (lab.estimated_time >= 60) {
+      const hours = lab.estimated_time / 60;
+      return `${hours % 1 === 0 ? hours : hours.toFixed(1)}h`;
+    }
+    return `${lab.estimated_time}m`;
+  };
   return (
     <div onClick={onClick}
       className="group bg-[#111827] rounded-xl overflow-hidden border border-gray-800 hover:border-red-500/50 transition-all duration-300 cursor-pointer transform hover:-translate-y-2 hover:shadow-xl hover:shadow-red-500/10">
       <div className="relative h-48 overflow-hidden">
-        <img src={lab.image} alt={lab.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        <img src={imageSrc} alt={lab.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent" />
         <div className="absolute top-3 left-3 flex gap-2">
-          <span className={`px-3 py-1 ${difficultyColors[lab.difficulty]} text-white text-xs font-semibold rounded-full`}>
+          <span className={`px-3 py-1 ${difficultyColors[lab.difficulty] ?? 'bg-gray-500'} text-white text-xs font-semibold rounded-full`}>
             {lab.difficulty}
           </span>
           <span className="px-3 py-1 bg-gray-800 text-gray-300 text-xs font-semibold rounded-full">
@@ -38,7 +62,7 @@ const LabCard: React.FC<LabCardProps> = ({ lab, onClick }) => {
         <h3 className="text-xl font-bold text-white mb-2 group-hover:text-red-400 transition-colors">{lab.title}</h3>
         <p className="text-gray-400 text-sm mb-4 line-clamp-2">{lab.description}</p>
         <div className="flex flex-wrap gap-2 mb-4">
-          {lab.skills.slice(0, 3).map((skill, i) => (
+          {(lab.skills ?? []).slice(0, 3).map((skill, i) => (
             <span key={i} className="px-2 py-1 bg-gray-800 text-gray-300 text-xs rounded">{skill}</span>
           ))}
         </div>
@@ -47,7 +71,7 @@ const LabCard: React.FC<LabCardProps> = ({ lab, onClick }) => {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {lab.estimatedTime}
+            {formatDuration()}
           </span>
           <span className="text-red-500 font-medium group-hover:underline">Start Lab</span>
         </div>

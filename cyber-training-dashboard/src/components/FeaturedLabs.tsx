@@ -1,15 +1,19 @@
-import React from 'react';
-import { labs } from '../data/labs';
+import React, { useEffect } from 'react';
 import LabCard from './LabCard';
-
+import { useLabs } from '@/contexts/LabsContext';
 interface FeaturedLabsProps {
   onLabClick: (labId: string) => void;
   onViewAll: () => void;
 }
 
 const FeaturedLabs: React.FC<FeaturedLabsProps> = ({ onLabClick, onViewAll }) => {
+  const { labs } = useLabs();
   const featured = labs.slice(0, 6);
+  const defaultLabId = labs[0]?.id;
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <section className="py-20 px-4 bg-[#111827]">
       <div className="max-w-7xl mx-auto">
@@ -27,13 +31,21 @@ const FeaturedLabs: React.FC<FeaturedLabsProps> = ({ onLabClick, onViewAll }) =>
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featured.map(lab => (
-            <LabCard key={lab.id} lab={lab} onClick={() => onLabClick(lab.id)} />
-          ))}
+          {featured.length > 0 ? (
+            featured.map(lab => (
+              <LabCard key={lab.id ?? lab.title} lab={lab} onClick={() => lab.id && onLabClick(lab.id)} />
+            ))
+          ) : (
+            <p className="text-gray-500 text-center col-span-full">Labs will appear here once they are published.</p>
+          )}
         </div>
         <div className="mt-12 text-center">
           <p className="text-gray-500 mb-4">Can't decide where to start?</p>
-          <button onClick={() => onLabClick(labs[0].id)} className="text-red-500 hover:text-red-400 font-medium underline underline-offset-4">
+          <button
+            onClick={() => defaultLabId && onLabClick(defaultLabId)}
+            disabled={!defaultLabId}
+            className={`text-red-500 font-medium underline underline-offset-4 ${defaultLabId ? 'hover:text-red-400' : 'opacity-50 cursor-not-allowed'}`}
+          >
             Try our beginner-friendly DC-1 lab
           </button>
         </div>

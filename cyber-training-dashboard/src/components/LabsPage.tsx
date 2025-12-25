@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { labs } from '../data/labs';
+import React, { useMemo, useState } from 'react';
 import LabCard from './LabCard';
 import { Lab } from '@/types';
+import { useLabs } from '@/contexts/LabsContext';
 
 interface LabsPageProps {
   onLabClick: (labId: string) => void;
@@ -13,7 +13,8 @@ const LabsPage: React.FC<LabsPageProps> = ({ onLabClick }) => {
   const [diffFilter, setDiffFilter] = useState('All');
   const [sortBy, setSortBy] = useState('default');
 
-  const categories = ['All', ...new Set(labs.map(l => l.category))];
+  const { labs } = useLabs();
+  const categories = useMemo(() => ['All', ...new Set(labs.map(l => l.category))], [labs]);
   const difficulties = ['All', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
   const filtered: Lab[] = labs.filter(lab => {
@@ -21,7 +22,7 @@ const LabsPage: React.FC<LabsPageProps> = ({ onLabClick }) => {
     const matchDiff = diffFilter === 'All' || lab.difficulty === diffFilter;
     const matchSearch = lab.title.toLowerCase().includes(search.toLowerCase()) ||
       lab.description.toLowerCase().includes(search.toLowerCase()) ||
-      lab.skills.some(s => s.toLowerCase().includes(search.toLowerCase()));
+      (lab.skills?.some(s => s.toLowerCase().includes(search.toLowerCase())) ?? false);
     return matchCat && matchDiff && matchSearch;
   });
 
@@ -72,7 +73,13 @@ const LabsPage: React.FC<LabsPageProps> = ({ onLabClick }) => {
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(lab => <LabCard key={lab.id} lab={lab} onClick={() => onLabClick(lab.id)} />)}
+          {filtered.map(lab => (
+            <LabCard
+              key={lab.id ?? lab.title}
+              lab={lab}
+              onClick={() => lab.id && onLabClick(lab.id)}
+            />
+          ))}
         </div>
         {filtered.length === 0 && (
           <div className="text-center py-16">
