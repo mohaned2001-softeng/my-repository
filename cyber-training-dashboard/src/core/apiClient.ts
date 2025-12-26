@@ -63,7 +63,9 @@ export const addLabAPIClient = async (token: string, labData: AddLabState) => {
   formData.append('description', labData.description);
   formData.append('difficulty', labData.difficulty);
   formData.append('category', labData.category);
-  formData.append('image', labData.image);
+  if (labData.image instanceof File) {
+    formData.append('image', labData.image);
+  }
   formData.append('writeup_url', labData.writeup_url);
   formData.append('estimated_time', labData.estimated_time.toString());
   formData.append('skills', JSON.stringify(labData.skills));

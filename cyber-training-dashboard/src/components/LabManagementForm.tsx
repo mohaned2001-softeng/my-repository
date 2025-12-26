@@ -1,4 +1,5 @@
 import { useLab } from "@/contexts/LabContext";
+import { useLabs } from "@/contexts/LabsContext";
 import React, { useEffect , useState } from "react";
 import "@/styles/styles.css";
 import SkillsDialog from "./SkillsDialog";
@@ -21,7 +22,7 @@ export default function LabManagementForm() {
         { name: 'Network', count: 8, icon: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0' },
         { name: 'Crypto', count: 5, icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
   ];
-  const {lab , setLab ,addLab , fetchTeacherLabs , deleteLab , editLab } = useLab();
+  const {lab , setLab ,addLab , fetchTeacherLabs , fetchLabs, deleteLab , editLab } = useLab();
   const {token} = useAuth();
   const [openDialog , setOpenDialog] = useState(false);
   const [image , setImage] = useState<File | null>(null);
@@ -31,7 +32,7 @@ export default function LabManagementForm() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
   
-
+  const { setLabs } = useLabs();
    useEffect(()=>{
        if(token){
           setLabsList([]);
@@ -40,53 +41,81 @@ export default function LabManagementForm() {
           });
        }
     },[token])
-  const handleAddLab = (labData:AddLabState) => {
-    if(labData.title.trim() === "" || labData.description.trim() === ""  || labData.estimated_time <=0 ){
+  const handleAddLab = async (labData:AddLabState) => {
+    if(labData.title.trim() === ""  || labData.estimated_time <=0  || labData.writeup_url.trim() === ""){
         alert("Please fill in all required fields.");
         return;
     }
-   
-    addLab(token.access_token, labData);
-    toast({
-      title: "Success",
-      description: "Lab added successfully",
-      duration: 5000
-    })
-    clearInputs();
-     fetchTeacherLabs(token.access_token).then((data)=>{
-       setLabsList(data);
-     });
+    if(!token){
+      return;
+    }
+     setLab({...lab , image_url:""})
+    try{
+     
+      console.log(labData)
+      await addLab(token.access_token, labData);
+      setLab({...lab, id:""})
+      toast({
+        title: "Success",
+        description: "Lab added successfully",
+        duration: 5000
+      });
+      clearInputs();
+      const updatedLabs = await fetchTeacherLabs(token.access_token);
+      setLabsList(updatedLabs);
+      const allLabs = await fetchLabs();
+      setLabs(allLabs);
+
+    }catch(error){
+      toast({
+        title: "Error",
+        description: "Unable to add lab. Please try again.",
+        variant: "destructive"
+      });
+    }
   }
   
   const clearInputs = () =>{
     setLab({ ...lab,
+      id:"",
       title: '',
       description: '',
       difficulty: 'Beginner',
       category: 'Linux',
       image: null,
-      image_url: null,
       writeup_url: '',
       skills: [],
       estimated_time: 0
     });
   }
 
-  const handleUpdateLab = (labData:Lab) =>{
+  const handleUpdateLab = async (labData:Lab) =>{
     if(labData.title.trim() === "" || labData.description.trim() === ""  || labData.estimated_time <=0 ){
         alert("Please fill in all required fields.");
         return;
     }
-    editLab(token.access_token, labData);
-    toast({
-      title: "Success",
-      description: "Lab updated successfully",
-      duration: 5000
-    })
-    clearInputs();
-     fetchTeacherLabs(token.access_token).then((data)=>{
-       setLabsList(data);
-     });
+    if(!token){
+      return;
+    }
+    try{
+      await editLab(token.access_token, labData);
+      toast({
+        title: "Success",
+        description: "Lab updated successfully",
+        duration: 5000
+      });
+      clearInputs();
+      const updatedLabs = await fetchTeacherLabs(token.access_token);
+      setLabsList(updatedLabs);
+      const allLabs = await fetchLabs();
+      setLabs(allLabs);
+    }catch(error){
+      toast({
+        title: "Error",
+        description: "Unable to update lab. Please try again.",
+        variant: "destructive"
+      });
+    }
   }
 
   const getLabById = (labId:string) =>{
@@ -107,19 +136,29 @@ export default function LabManagementForm() {
     setDeleteDialogOpen(true);
   }
 
-  const confirmDeleteLab = () => {
-    if (selectedLabId) {
-      deleteLab(token.access_token, selectedLabId);
-      toast({
-        title: "Success",
-        description: "Lab deleted successfully",
-        duration: 5000
-      });
-      fetchTeacherLabs(token.access_token).then((response) => {
-        setLabsList(response);
-      });
-      setDeleteDialogOpen(false);
-      setSelectedLabId(null);
+  const confirmDeleteLab = async () => {
+    if (selectedLabId && token) {
+      try{
+        await deleteLab(token.access_token, selectedLabId);
+        toast({
+          title: "Success",
+          description: "Lab deleted successfully",
+          duration: 5000
+        });
+        const updatedLabs = await fetchTeacherLabs(token.access_token);
+        setLabsList(updatedLabs);
+        const allLabs = await fetchLabs();
+         setLabs(allLabs);
+      }catch(error){
+        toast({
+          title: "Error",
+          description: "Unable to delete lab. Please try again.",
+          variant: "destructive"
+        });
+      }finally{
+        setDeleteDialogOpen(false);
+        setSelectedLabId(null);
+      }
     }
   }
  return (

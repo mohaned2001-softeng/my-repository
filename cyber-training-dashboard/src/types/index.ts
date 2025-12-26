@@ -14,8 +14,8 @@ export interface Lab {
   author?: string | null;
 }
 
-export interface AddLabState extends Omit<Lab, 'id'>  {
-  created_at?: Date;
+export interface AddLabState extends Omit<Lab, 'id' | 'image_url' | 'updated_at'> { 
+   created_at?: string;
 }
 export interface User {
   id: string;
