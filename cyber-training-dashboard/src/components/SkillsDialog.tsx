@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react"
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react"
 import { useLab } from "@/contexts/LabContext"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,6 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { useSkills } from "@/contexts/SkillsContext"
 
 type SkillsDialogProps = {
     openDialog: boolean
@@ -31,17 +32,24 @@ type Skill = {
 }
 
 export default function SkillsDialog({ openDialog, setOpenDialog }: SkillsDialogProps) {
-    const [skills, setSkills] = useState<Skill[]>([
-        { id: "network-security", name: "Network Security" },
-        { id: "penetration-testing", name: "Penetration Testing" },
-        { id: "incident-response", name: "Incident Response" },
-    ])
+    const { setLab , lab} = useLab();
+    const { skills, setSkills } = useSkills()
     const [skillName, setSkillName] = useState("")
     const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null)
+    const [oldSkillName, setOldSkillName] = useState("")
+
+    useEffect(() => {
+        if (!openDialog) {
+            return
+        }
+        const labSkills = Array.isArray(lab.skills) ? lab.skills : []
+        setSkills(labSkills.map((name, index) => ({ id: `${index}-${name}`, name })))
+    }, [openDialog, lab.skills, setSkills])
 
     const resetForm = () => {
         setSkillName("")
         setSelectedSkillId(null)
+        setOldSkillName("")
     }
 
     const handleAdd = (event: FormEvent<HTMLFormElement>) => {
@@ -55,6 +63,7 @@ export default function SkillsDialog({ openDialog, setOpenDialog }: SkillsDialog
             ...previous,
             { id: `${Date.now()}`, name: trimmedName },
         ])
+        setLab({ ...lab, skills: [...(lab.skills || []), trimmedName] })
         resetForm()
     }
 
@@ -72,6 +81,7 @@ export default function SkillsDialog({ openDialog, setOpenDialog }: SkillsDialog
                 skill.id === selectedSkillId ? { ...skill, name: trimmedName } : skill
             )
         )
+        setLab({ ...lab, skills: lab.skills.map((skill) => skill === oldSkillName ? trimmedName : skill) })
         resetForm()
     }
 
@@ -81,9 +91,9 @@ export default function SkillsDialog({ openDialog, setOpenDialog }: SkillsDialog
         }
 
         setSkills((previous) => previous.filter((skill) => skill.id !== selectedSkillId))
+        setLab({ ...lab, skills: lab.skills.filter((skill) => skill !== oldSkillName) })
         resetForm()
     }
-    const {setLab , lab} = useLab();
     return (
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
             <DialogContent className="max-w-2xl">
@@ -140,6 +150,7 @@ export default function SkillsDialog({ openDialog, setOpenDialog }: SkillsDialog
                                     onClick={() => {
                                         setSelectedSkillId(skill.id)
                                         setSkillName(skill.name)
+                                        setOldSkillName(skill.name)
                                     }}
                                 >
                                     <TableCell className="cursor-pointer font-medium text-foreground">

@@ -1,8 +1,8 @@
 import { useLab } from "@/contexts/LabContext";
 import { useLabs } from "@/contexts/LabsContext";
 import React, { useEffect , useState } from "react";
-import "@/styles/styles.css";
-import SkillsDialog from "./SkillsDialog";
+import "@/styles/styles.css"; 
+import SillsDialog from "./SkillsDialog";
 import { AddLabState, Lab } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import SkillsDialog from "./SkillsDialog";
 export default function LabManagementForm() {
      const categories = [
         { name: 'Linux', count: 25, icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z' },
@@ -22,17 +23,19 @@ export default function LabManagementForm() {
         { name: 'Network', count: 8, icon: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0' },
         { name: 'Crypto', count: 5, icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
   ];
-  const {lab , setLab ,addLab , fetchTeacherLabs , fetchLabs, deleteLab , editLab } = useLab();
-  const {token} = useAuth();
+  const {lab , setLab ,addLab , fetchTeacherLabs , fetchLabs, deleteLab , deleteAllLabs, editLab } = useLab();
+  const {token , user} = useAuth();
   const [openDialog , setOpenDialog] = useState(false);
-  const [image , setImage] = useState<File | null>(null);
-  const [imagePath , setImagePath] = useState<string | null>(null);
   const {toast} = useToast();
   const [labsList , setLabsList] = useState<Lab[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
+  const [isDeleteAll, setIsDeleteAll] = useState(false);
+  const [searchTitle, setSearchTitle] = useState('');
+  const [searchCategory, setSearchCategory] = useState('');
+  const [searchDifficulty, setSearchDifficulty] = useState('');
   
-  const { setLabs } = useLabs();
+  const { setLabs} = useLabs();
    useEffect(()=>{
        if(token){
           setLabsList([]);
@@ -41,20 +44,38 @@ export default function LabManagementForm() {
           });
        }
     },[token])
+
+  const filteredLabs = labsList.filter(lab =>
+    lab.title.toLowerCase().includes(searchTitle.toLowerCase()) &&
+    lab.category.toLowerCase().includes(searchCategory.toLowerCase()) &&
+    lab.difficulty.toLowerCase().includes(searchDifficulty.toLowerCase())
+  );
   const handleAddLab = async (labData:AddLabState) => {
-    if(labData.title.trim() === ""  || labData.estimated_time <=0  || labData.writeup_url.trim() === ""){
-        alert("Please fill in all required fields.");
-        return;
-    }
-    if(!token){
+    const isWriteupUrlValid = validateUrl(labData.writeup_url);
+    // التحقق من جميع الحقول المطلوبة
+    if (
+      labData.title.trim() === "" ||
+      labData.description.trim() === "" ||
+      labData.difficulty.trim() === "" ||
+      labData.category.trim() === "" ||
+      labData.writeup_url.trim() === "" ||
+      !isWriteupUrlValid ||
+      labData.estimated_time <= 0 ||
+      labData.skills.length === 0  // تأكد من أن المهارات غير فارغة
+    ) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields (title, description, difficulty, category, valid writeup URL, estimated time, and at least one skill).",
+        variant: "destructive",
+        duration: 5000
+      });
       return;
     }
-     setLab({...lab , image_url:""})
-    try{
-     
-      console.log(labData)
+    if (!token) {
+      return;
+    }
+    try {
       await addLab(token.access_token, labData);
-      setLab({...lab, id:""})
       toast({
         title: "Success",
         description: "Lab added successfully",
@@ -65,8 +86,7 @@ export default function LabManagementForm() {
       setLabsList(updatedLabs);
       const allLabs = await fetchLabs();
       setLabs(allLabs);
-
-    }catch(error){
+    } catch (error) {
       toast({
         title: "Error",
         description: "Unable to add lab. Please try again.",
@@ -83,6 +103,7 @@ export default function LabManagementForm() {
       difficulty: 'Beginner',
       category: 'Linux',
       image: null,
+      image_url: null,
       writeup_url: '',
       skills: [],
       estimated_time: 0
@@ -90,8 +111,15 @@ export default function LabManagementForm() {
   }
 
   const handleUpdateLab = async (labData:Lab) =>{
-    if(labData.title.trim() === "" || labData.description.trim() === ""  || labData.estimated_time <=0 ){
-        alert("Please fill in all required fields.");
+     const isWriteupUrlValid = validateUrl(labData.writeup_url);
+     if(labData.title.trim() === "" || labData.description.trim() === ""  || labData.estimated_time <=0 || labData.writeup_url.trim() === "" || !isWriteupUrlValid){
+       window.scrollTo({ top: 650 , behavior: 'smooth' });
+       toast({
+          title: "Error",
+         description: "Please fill in all required fields with a valid writeup URL.",
+          variant:"destructive",
+          duration: 5000
+       });
         return;
     }
     if(!token){
@@ -132,12 +160,17 @@ export default function LabManagementForm() {
   }
 
   const openDeleteDialog = (labId: string) => {
+    setIsDeleteAll(false);
     setSelectedLabId(labId);
     setDeleteDialogOpen(true);
   }
-
+  const openDeleteAllDialog =() => {
+    setSelectedLabId(null);
+    setIsDeleteAll(true);
+    setDeleteDialogOpen(true)
+  }
   const confirmDeleteLab = async () => {
-    if (selectedLabId && token) {
+    if (!isDeleteAll && selectedLabId && token) {
       try{
         await deleteLab(token.access_token, selectedLabId);
         toast({
@@ -158,17 +191,46 @@ export default function LabManagementForm() {
       }finally{
         setDeleteDialogOpen(false);
         setSelectedLabId(null);
+        setIsDeleteAll(false);
       }
+    }
+  }
+
+  const confirmDeleteAllLabs = async () =>{
+    if(!token){
+      return;
+    }
+    try{
+      await deleteAllLabs(token.access_token);
+      toast({
+        title: "Success",
+        description: "All labs deleted successfully",
+        duration: 5000
+      });
+      const updatedLabs = await fetchTeacherLabs(token.access_token);
+      setLabsList(updatedLabs);
+      const allLabs = await fetchLabs();
+      setLabs(allLabs);
+    }catch(error){
+      toast({
+        title: "Error",
+        description: "Unable to delete all labs. Please try again.",
+        variant: "destructive"
+      });
+    }finally{
+      setDeleteDialogOpen(false);
+      setSelectedLabId(null);
+      setIsDeleteAll(false);
     }
   }
  return (
    <>
-      <div  style={{backgroundColor:"#123" , padding:"20px" , marginTop:"14px" , borderRadius:"8px" , width:"100%"}}>
+      <div className="lab-management" >
         <div >
-          <div style={{width:"100%", textAlign:"center"}}>
-            <h2  style={{color:"white"  , margin:"auto"}}>Lab management</h2>
+          <div className="header">
+            <h2 >Lab management</h2>
           </div>
-             <div style={{display:"flex", justifyContent:"space-between"}}>
+             <div className={"flex-space"} >
                 <div>
                   <input type="hidden" value={lab.id} />
                   <label style={{color:"white"}}>Lab title :</label>
@@ -196,7 +258,7 @@ export default function LabManagementForm() {
                   </select>
                </div>
              </div >
-             <div style={{display:"flex", justifyContent:"space-between"}}>
+             <div className={"flex-space"} >
                <div>
                   <label style={{color:"whitesmoke"}}>Writeup URL :</label>
                   <br/>
@@ -205,14 +267,14 @@ export default function LabManagementForm() {
                <div>
                     
                </div>
-               <div style={{display:"flex" , justifyContent:"space-between" , width:"360px" ,alignItems:"center"}}>
+               <div className={"flex-space"} style={{ width:"360px" ,alignItems:"center"}}>
                   <label style={{color:"whitesmoke"}}>Estimated Time  between:</label>
                   <br/>
                   <input required type="number" value={lab.estimated_time} onChange={(e)=>{setLab({...lab, estimated_time: Number(e.target.value)})}} className="inputs numberInputs"  />
                   <span style={{color:"white" , marginLeft:"4px"}}>hours</span>
                </div>
              </div>
-             <div style={{display:"flex", justifyContent:"space-between"}}>
+             <div className={"flex-space"}>
                <div>
                   <label style={{color:"whitesmoke"}}>select image for lab :</label>
                   <div style={{marginTop:"10px" , borderRadius:"8px" , marginBottom:"6px" , width:"200px" , height:"120px" , border:"1px dashed gray"  , display:"flex" , alignItems:"center" , justifyContent:"center"}}>
@@ -235,18 +297,23 @@ export default function LabManagementForm() {
                </div>
              </div>
              <div style={{display:"flex" , justifyContent:"space-around"}}>
-                <button type="submit" onClick={()=>{handleAddLab(lab)}} style={{backgroundColor:"#44ef69ff" , color:"black" , padding:"8px 16px" , borderRadius:"8px" , marginTop:"10px"}}>Add Lab</button>
-                <button type="submit"  style={{backgroundColor:"#EF4444" , color:"white" , padding:"8px 16px" , borderRadius:"8px" , marginTop:"10px"}}>Delete Lab</button>
-                <button type="submit" onClick={()=> {handleUpdateLab(lab)}}  style={{backgroundColor:"#e4ef44ff" , color:"black" , padding:"8px 16px" , borderRadius:"8px" , marginTop:"10px"}}>Update Lab</button>
-                <button type="submit" onClick={()=>{
+                <button type="submit" className={"buttons addButtons"} onClick={()=>{ handleAddLab(lab)}} >Add Lab</button>
+                <button type="button" className={"buttons deleteButtons"} onClick={openDeleteAllDialog} >Delete All Labs</button>
+                <button type="submit" className={"buttons editButtons"} onClick={()=> {handleUpdateLab(lab)}}  >Update Lab</button>
+                <button type="submit" className={"buttons .selectButtons"} onClick={()=>{
                    setOpenDialog(true)
-                }}  style={{backgroundColor:"#3330b1ff" , color:"black" , padding:"8px 16px" , borderRadius:"8px" , marginTop:"10px"}}>Skills manage</button>
+                }}  >Skills manage</button>
             
              </div>
 
         </div>
         <div>
-           <table style={{height:"300px" , overflowY:"scroll" , display:"block" , marginTop:"20px" , border:"1px solid gray"}}>
+           <div className={"flex-space"} style={{marginTop:"30px"}}>
+            <input type="text" className="inputs" placeholder="search by title" value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)}/>
+            <input type="text" className="inputs" placeholder="search by category" value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}/>
+            <input type="text" className="inputs" placeholder="search by difficulty" value={searchDifficulty} onChange={(e) => setSearchDifficulty(e.target.value)}/>
+          </div>
+           <table style={{height:"300px" , display:"block" , marginTop:"20px" , border:"1px solid gray"}}>
               <thead style={{position:"sticky" , top:0  , borderBottom:"1px solid gray" , backgroundColor:"#367527ff"}} >
                 <tr style={{}} >
                   <th style={{color:"gold"}}>Title</th>
@@ -260,7 +327,7 @@ export default function LabManagementForm() {
               
               </thead>
                 <tbody>
-                    {labsList.map((lab) => (
+                    {filteredLabs.map((lab) => (
                   <tr key={lab.id}>
                     <td style={{color:"white"}}>{lab.title}</td>
                     <td style={{color:"white"}}><a href={lab.writeup_url} target="_blank" rel="noopener noreferrer" style={{color:"lightblue"}}>Writeup</a></td>
@@ -275,31 +342,54 @@ export default function LabManagementForm() {
            </table>
         </div>
         <SkillsDialog openDialog={openDialog} setOpenDialog={setOpenDialog} />
-        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+          if(!open){
+            setSelectedLabId(null);
+            setIsDeleteAll(false);
+          }
+          setDeleteDialogOpen(open);
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogTitle>{isDeleteAll ? "Delete All Labs" : "Confirm Deletion"}</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete this lab? This action cannot be undone.
+                {isDeleteAll ? "Are you sure you want to delete all labs? This action cannot be undone." : "Are you sure you want to delete this lab? This action cannot be undone."}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <button
-                onClick={() => setDeleteDialogOpen(false)}
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setSelectedLabId(null);
+                  setIsDeleteAll(false);
+                }}
                 className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
               >
                 Cancel
               </button>
               <button
-                onClick={confirmDeleteLab}
+                onClick={isDeleteAll ? confirmDeleteAllLabs : confirmDeleteLab}
                 className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 ml-2"
               >
-                Delete
+                {isDeleteAll ? "Delete All" : "Delete"}
               </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        
       </div>
    </>
  )
 }
+
+const validateUrl = (value: string) => {
+  if (!value.trim()) {
+    return false;
+  }
+  try {
+    const url = new URL(value);
+    return Boolean(url.protocol && url.host);
+  } catch {
+    return false;
+  }
+};

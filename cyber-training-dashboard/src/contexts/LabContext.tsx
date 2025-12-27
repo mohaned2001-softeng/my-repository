@@ -1,6 +1,6 @@
 import { AddLabState, Lab } from '@/types';
 import {createContext , useState , useContext, type ReactNode, useCallback, type Dispatch, type SetStateAction} from 'react'; 
-import { addLabAPIClient, updateLabAPIClient, deleteLabAPIClient, getAllLabsAPIClient, getTeacherLabsAPIClient } from '@/core/apiClient';
+import { addLabAPIClient , deleteAllLabsAPIClient, updateLabAPIClient, deleteLabAPIClient, getAllLabsAPIClient, getTeacherLabsAPIClient } from '@/core/apiClient';
 
 
 interface LabContextType {
@@ -9,6 +9,7 @@ interface LabContextType {
     addLab: (token:string , labData:AddLabState) => Promise<void>;  
     editLab: (token:string , labData:Lab) => Promise<void>;
     deleteLab: (token:string , labId:string) => Promise<void>;
+    deleteAllLabs: (token:string) => Promise<void>;
     fetchLabs: () => Promise<Lab[]>;
     fetchTeacherLabs: ( token:string) => Promise<Lab[]>;
 }
@@ -44,7 +45,10 @@ export const LabProvider = ({children}: {children: ReactNode}) => {
     const deleteLab = useCallback(async (token:string , labId:string)=>{
         await deleteLabAPIClient(token, labId);
     },[]);
-   
+     
+    const deleteAllLabs = useCallback(async (token:string)=>{
+        await deleteAllLabsAPIClient(token);
+    },[]);
     const  fetchLabs = useCallback(async ()=>{
         const response = await getAllLabsAPIClient();
         return response.data as Lab[];
@@ -54,7 +58,7 @@ export const LabProvider = ({children}: {children: ReactNode}) => {
        return response.data as Lab[];
     },[]);
     return(
-    <LabContext.Provider value={{lab , setLab, addLab, editLab, deleteLab, fetchLabs, fetchTeacherLabs}}>
+    <LabContext.Provider value={{lab , setLab, addLab, editLab, deleteLab, deleteAllLabs, fetchLabs, fetchTeacherLabs}}>
         {children}
     </LabContext.Provider>
    )

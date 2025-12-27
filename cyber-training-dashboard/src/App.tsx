@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { LabsProvider } from "./contexts/LabsContext";
+import { SkillsProvider } from "./contexts/SkillsContext";
 
 const queryClient = new QueryClient();
 
@@ -18,12 +19,15 @@ const App = () => (
         <Toaster />
         <Sonner />
         <LabsProvider>
-        <BrowserRouter>
+          <SkillsProvider>
+            <BrowserRouter>
            <Routes>
             <Route path="/" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+         </BrowserRouter>
+          </SkillsProvider>
+       
         </LabsProvider>
       </TooltipProvider>
     </QueryClientProvider>

@@ -11,6 +11,7 @@ import {
   editUserAPIClient,
   refreshTokenAPIClient
 } from '../core/apiClient';
+import { useLab } from '@/contexts/LabContext';
 import { AuthTokens, User } from '../types';
 import { jwtDecode } from 'jwt-decode';
 
@@ -69,6 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [token  , setToken] = useState<AuthTokens | null>(null);
+  const {setLab , lab} = useLab();
   useEffect(() => {
     const initializeAuth = async () => {
       const accessToken = getStoredToken(ACCESS_TOKEN_KEY);
@@ -112,6 +114,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signOut = async () => {
     try {
       if (token?.refresh_token && token?.access_token) {
+         setLab({ ...lab,
+            id:"",
+            title: '',
+            description: '',
+            difficulty: 'Beginner',
+            category: 'Linux',
+            image: null,
+            image_url: null,
+            writeup_url: '',
+            skills: [],
+            estimated_time: 0
+          });
         await logoutAPIClient(token.refresh_token , token.access_token);
       }
     } finally {

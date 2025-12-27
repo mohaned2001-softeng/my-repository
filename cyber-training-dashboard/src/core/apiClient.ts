@@ -9,6 +9,52 @@ const apiClient = axios.create({
   },
 });
 
+type LabLike = AddLabState | Lab;
+
+const prepareLabRequest = (labData: LabLike, includeId = false) => {
+  const basePayload: Record<string, unknown> = {
+    title: labData.title,
+    description: labData.description,
+    difficulty: labData.difficulty,
+    category: labData.category,
+    writeup_url: labData.writeup_url ?? '',
+    estimated_time: labData.estimated_time,
+    skills: Array.isArray(labData.skills) ? labData.skills : [],
+  };
+
+  if (includeId && 'id' in labData) {
+    basePayload.id = labData.id;
+  }
+
+  if (labData.image instanceof File) {
+    const formData = new FormData();
+    Object.entries(basePayload).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (key === 'skills') {
+        formData.append(key, JSON.stringify(value));
+        return;
+      }
+      if (key === 'estimated_time' && typeof value === 'number') {
+        formData.append(key, value.toString());
+        return;
+      }
+      formData.append(key, String(value));
+    });
+    formData.append('image', labData.image);
+    return { body: formData, isMultipart: true } as const;
+  }
+
+  return {
+    body: {
+      ...basePayload,
+      image: null,
+    },
+    isMultipart: false,
+  } as const;
+};
+
 export const loginAPIClient = async (email: string, password: string) => {
   return await apiClient.post('/auth/login/', {identifier: email, password });
 }
@@ -58,43 +104,22 @@ export const setPasswordAPIClient = async (email: string, password: string , con
 }
 
 export const addLabAPIClient = async (token: string, labData: AddLabState) => {
-  const formData = new FormData(); 
-  formData.append('title', labData.title);
-  formData.append('description', labData.description);
-  formData.append('difficulty', labData.difficulty);
-  formData.append('category', labData.category);
-  if (labData.image instanceof File) {
-    formData.append('image', labData.image);
-  }
-  formData.append('writeup_url', labData.writeup_url);
-  formData.append('estimated_time', labData.estimated_time.toString());
-  formData.append('skills', JSON.stringify(labData.skills));
-  return await apiClient.post('/lab/add-lab/', formData , {
+  const { body, isMultipart } = prepareLabRequest(labData);
+  return await apiClient.post('/lab/add-lab/', body , {
     headers:{
-      "Content-Type": "multipart/form-data",
-      Authorization:`Bearer ${token}`
+      Authorization:`Bearer ${token}`,
+      'Content-Type': isMultipart ? 'multipart/form-data' : 'application/json',
     }
   });
 }
 
 
 export const updateLabAPIClient = async (token: string, labId: string, labData: Lab) => {
-  const formData = new FormData();
-  formData.append('title', labData.title);
-  formData.append('description', labData.description);
-  formData.append('difficulty', labData.difficulty);
-  formData.append('category', labData.category);
-  if (labData.image instanceof File) {
-    formData.append('image', labData.image);
-  }
-  formData.append('writeup_url', labData.writeup_url);
-  formData.append('estimated_time', labData.estimated_time.toString());
-  formData.append('skills', JSON.stringify(labData.skills));
-  formData.append('id', labData.id || '');
-  return await apiClient.put(`/lab/edit-lab/${labId}/`, formData , {
+  const { body, isMultipart } = prepareLabRequest(labData, true);
+  return await apiClient.put(`/lab/edit-lab/${labId}/`, body , {
     headers: {
-      'Content-Type': 'multipart/form-data',
        Authorization: `Bearer ${token}`,
+       'Content-Type': isMultipart ? 'multipart/form-data' : 'application/json',
     },
   });
 }
@@ -126,7 +151,10 @@ export const isTokenValidAPIClient = (token : string) => {
    }
 }
 
-
+export const deleteAllLabsAPIClient = async (token: string) => {
+  return await apiClient.delete('/lab/delete-all-labs/',  { 
+    headers: { Authorization: `Bearer ${token}` } });
+}
 export const refreshTokenAPIClient = async (refreshToken: string) => {
   console.log("client refresh token")
   return await apiClient.post('/auth/refresh-token/', { refresh_token: refreshToken });
