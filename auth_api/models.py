@@ -34,7 +34,7 @@ class Custom_user(AbstractUser):
     avatar_url = models.URLField(blank=True, null=True)
     role = models.CharField(max_length=50,choices=ROLE_CHOICES, default='STUDENT')
     is_verified = models.BooleanField(default=False)
- 
+    phone_number = models.CharField(max_length=12 , null=True , blank=True)
 class OTP(models.Model):
     user = models.ForeignKey(Custom_user, on_delete=models.CASCADE, related_name="otps")
     code = models.CharField(max_length=6)
