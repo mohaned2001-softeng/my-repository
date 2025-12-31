@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLabs } from '@/contexts/LabsContext';
+import { buildAssetUrl } from '@/lib/config';
 
 interface LabDetailProps {
   labId: string;
@@ -18,7 +19,7 @@ const LabDetail: React.FC<LabDetailProps> = ({ labId, onBack, onLogin }) => {
   const relatedLabs = labs.filter(l => l.category === lab?.category && l.id !== labId).slice(0, 3);
   const getImageUrl = (imagePath?: string | null) => {
     if (!imagePath) return 'https://placehold.co/1200x600?text=Cyber+Lab';
-    return imagePath.startsWith('http') ? imagePath : `http://localhost:8000${imagePath}`;
+    return buildAssetUrl(imagePath) ?? 'https://placehold.co/1200x600?text=Cyber+Lab';
   };
 
   if (!labs.length) {

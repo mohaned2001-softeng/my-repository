@@ -2,8 +2,9 @@ import axios from 'axios';
 import { AddLabState, Lab, RegisterState, User } from '../types';
 import { jwtDecode } from 'jwt-decode';
 import { Fullscreen } from 'lucide-react';
+import { API_BASE_URL } from '../lib/config';
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000', // Replace with your backend API URL
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
